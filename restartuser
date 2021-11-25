@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+# Script per a restaurar l'usuari d'un equip
+# Use: restartuser nomusuari nomusuari2 ...
+# Author: Juan Casamitjana
+
+# Primerament comprova si hem executat aquest script com a sudo
+super=`id -u`
+if [ $super -ne 0 ]; then
+  echo -e "Has d'executar aquest script amb permisos de sudo"
+  for user in ${@}; do
+    echo -e $user
+  done
+  exit 1
+else
+  for user in ${@}; do
+    getent passwd $1 > /dev/null
+    if [ $? -ne 0 ]; then
+      echo -e "L'usuari $1 no existeix"
+    else
+      # Restauració de la contrasenya i que demani canviar-la al proper inici
+      echo -e "$1\n$1\n" | passwd $1
+      passwd -e $1
+      echo -e "S'ha reiniciat la contrasenya pe l'usuari $1. L'usuari haurà de canviar la contrasenya al proper inici de sessió"
+      read -p "Vols esborrar totes les dades de l'usuari $1? (s/N)" esborrar
+      if [ -z $esborrar ] || [ ${esborrar^^} != "S" ]; then
+        echo -e "Carpeta home de l'usuari $1 sense canvis"      
+      else 
+        # Esborrarem tot el contingut de la carpeta home de l'usuari 
+        rm -rf /home/$1/
+        # Regenerarem el directori home de l'usuari
+        cp -R /etc/skel /home/$1
+        chown $1:$1 /home/$1
+        chmod 700 /home/$1
+        echo -e "Dades esborrades. Carpeta home de l'usuari $1 regenerat"
+        echo "1"
+      fi
+    fi
+  done
+  exit 0
+fi
+
